@@ -2,16 +2,13 @@ pipeline {
     agent any
 
     stages {
-
-        }
-
         stage('Install dependencies') {
             steps {
                 sh '''
-                  python3 -m venv venv
-                  . venv/bin/activate
-                  pip install --upgrade pip
-                  pip install -r requirements.txt
+                python3 -m venv venv
+                . venv/bin/activate
+                pip install --upgrade pip
+                pip install -r requirements.txt
                 '''
             }
         }
@@ -20,13 +17,14 @@ pipeline {
             steps {
                 withCredentials([file(credentialsId: 'aws-env-file', variable: 'AWS_ENV_FILE')]) {
                     sh '''
-                      echo "📌 Usando credencial secreta..."
-                      cp "$AWS_ENV_FILE" .env
-                      echo "📂 Contenido del .env:"
-                      cat .env   # Jenkins enmascarará los valores sensibles
-                      
-                      . venv/bin/activate
-                      python export_logs.py
+                    echo "📌 Usando credencial secreta..."
+                    cp "$AWS_ENV_FILE" .env
+                    echo "📂 Contenido del .env:"
+                    cat .env # Jenkins enmascarará los valores sensibles
+                    
+                    # Activar el entorno virtual y luego ejecutar el script.
+                    . venv/bin/activate
+                    python export_logs.py
                     '''
                 }
             }

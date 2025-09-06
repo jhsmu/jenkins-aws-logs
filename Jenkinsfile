@@ -2,11 +2,7 @@ pipeline {
     agent any
 
     stages {
-        stage('Checkout') {
-            steps {
-                git branch: 'main',
-                    url: 'https://github.com/Jemena12/jenkins-aws-logs.git'
-            }
+
         }
 
         stage('Install dependencies') {

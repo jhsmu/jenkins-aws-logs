@@ -1,72 +1,38 @@
-import os
-import boto3
-import pandas as pd
 from dotenv import load_dotenv
+import os, boto3, pandas as pd
 from datetime import datetime, timezone
 
-# Cargar variables de entorno
 load_dotenv()
 
-AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
-AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
-AWS_DEFAULT_REGION = 'us-east-1'
-LOG_GROUP = 'LeancoreInfraStackProd-LeancorePortfolioReporterTaskleancoreportfolioreporterLogGroupD62FBEF1-V5zAjptjzyox'
+aws_key = os.getenv("AWS_ACCESS_KEY_ID")
+aws_secret = os.getenv("AWS_SECRET_ACCESS_KEY")
+region = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
+log_group = os.getenv("LOG_GROUP")
 
-# Cliente de CloudWatch Logs
-print("Cliente de Cloudwath")
-logs = boto3.client(
-    "logs",
-    region_name=AWS_DEFAULT_REGION,
-    aws_access_key_id=AWS_ACCESS_KEY_ID,
-    aws_secret_access_key=AWS_SECRET_ACCESS_KEY
+if not all([aws_key, aws_secret, log_group]):
+    raise SystemExit("❌ Variables de entorno faltantes")
+
+logs = boto3.client("logs",
+    aws_access_key_id=aws_key,
+    aws_secret_access_key=aws_secret,
+    region_name=region
 )
 
-# 👉 Obtener el stream más reciente
-print("Obteniendo stream mas recientes")
 streams = logs.describe_log_streams(
-    logGroupName=LOG_GROUP,
+    logGroupName=log_group,
     orderBy="LastEventTime",
     descending=True,
     limit=1
 )
 
 if not streams.get("logStreams"):
-    print("⚠️ No se encontraron streams en el Log Group")
+    print("⚠️ No hay streams en el grupo")
     exit()
 
-latest_stream = streams["logStreams"][0]["logStreamName"]
-print(f"📌 Último stream: {latest_stream}")
+stream = streams["logStreams"][0]["logStreamName"]
+events = logs.get_log_events(logGroupName=log_group, logStreamName=stream)
 
-# Obtener logs de ese stream
-print("Obteniendo Logs")
-events = []
-next_token = None
+rows = [{"timestamp": datetime.fromtimestamp(e["timestamp"]/1000, tz=timezone.utc), "message": e["message"]} for e in events["events"]]
 
-while True:
-    params = {
-        "logGroupName": LOG_GROUP,
-        "logStreamName": latest_stream,
-        "limit": 100
-    }
-    if next_token:
-        params["nextToken"] = next_token
-
-    response = logs.get_log_events(**params)
-
-    for event in response.get("events", []):
-        events.append({
-            "timestamp": datetime.fromtimestamp(event["timestamp"]/1000, tz=timezone.utc),
-            "message": event["message"]
-        })
-
-    next_token = response.get("nextForwardToken")
-    if not next_token or next_token == params.get("nextToken"):
-        break
-
-# Exportar a CSV
-print("Exportando CSV")
-df = pd.DataFrame(events)
-df.to_csv("logs_export.csv", index=False)
-
-print(f"✅ Exportados {len(events)} logs del stream más reciente a logs_export.csv")
-
+pd.DataFrame(rows).to_csv("logs_export.csv", index=False)
+print("✅ Exportados", len(rows), "eventos")

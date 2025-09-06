@@ -19,8 +19,10 @@ pipeline {
                     sh '''
                     echo "📌 Usando credencial secreta..."
                     
-                    # Cargar las variables de entorno desde el archivo de credenciales
-                    export $(cat "$AWS_ENV_FILE" | xargs)
+                    # ✅ Cargar las variables de entorno de manera segura
+                    set -a
+                    . "$AWS_ENV_FILE"
+                    set +a
                     
                     echo "📂 Las variables de entorno han sido cargadas."
                     

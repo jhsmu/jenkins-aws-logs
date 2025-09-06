@@ -13,16 +13,18 @@ pipeline {
             }
         }
 
-        stage('Run with secret .env') {
+        stage('Run with secrets') {
             steps {
                 withCredentials([file(credentialsId: 'aws-env-file', variable: 'AWS_ENV_FILE')]) {
                     sh '''
                     echo "📌 Usando credencial secreta..."
-                    cp "$AWS_ENV_FILE" .env
-                    echo "📂 Contenido del .env:"
-                    cat .env # Jenkins enmascarará los valores sensibles
                     
-                    # Activar el entorno virtual y luego ejecutar el script.
+                    # Cargar las variables de entorno desde el archivo de credenciales
+                    export $(cat "$AWS_ENV_FILE" | xargs)
+                    
+                    echo "📂 Las variables de entorno han sido cargadas."
+                    
+                    # Activar el entorno virtual y ejecutar el script
                     . venv/bin/activate
                     python export_logs.py
                     '''
